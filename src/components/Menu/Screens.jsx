@@ -126,7 +126,7 @@ export function TitleScreen({ onStart }) {
     <canvas
       ref={canvasRef}
       width={900} height={400}
-      style={{ display: 'block', imageRendering: 'pixelated', cursor: 'pointer', maxWidth: '100%' }}
+      style={{ display: 'block', imageRendering: 'pixelated', cursor: 'pointer', width: '100vw', height: '100vh', objectFit: 'fill' }}
       onClick={onStart}
     />
   );
@@ -142,7 +142,7 @@ export function CountdownOverlay({ count }) {
     }}>
       <div style={{
         fontFamily: '"Press Start 2P", monospace',
-        fontSize: count === 0 ? 60 : 90,
+        fontSize: count === 0 ? 'clamp(48px, 9vmin, 160px)' : 'clamp(64px, 13vmin, 220px)',
         color: count > 1 ? '#FFD700' : '#00ff44',
         textShadow: '0 0 40px currentColor',
         animation: 'cntDown 0.35s ease-out',
@@ -163,16 +163,16 @@ export function LevelUpToast({ level, onDone }) {
 
   return (
     <div style={{
-      position: 'fixed', top: 40, left: '50%', transform: 'translateX(-50%)',
+      position: 'fixed', top: 'var(--gap-lg)', left: '50%', transform: 'translateX(-50%)',
       background: 'linear-gradient(135deg,#1a3a00,#3a6a00)',
-      border: '2px solid #FFD700', padding: '14px 28px',
+      border: 'var(--bd) solid #FFD700', padding: 'var(--gap-md) var(--gap-lg)',
       fontFamily: '"Press Start 2P", monospace', zIndex: 300,
       boxShadow: '0 0 30px rgba(255,215,0,0.5)',
       animation: 'lvlUp 0.4s ease-out',
       whiteSpace: 'nowrap',
     }}>
-      <div style={{ color: '#FFD700', fontSize: 12 }}>✨ LEVEL UP!</div>
-      <div style={{ color: '#aaffaa', fontSize: 8, marginTop: 6 }}>Lv.{level} 달성!</div>
+      <div style={{ color: '#FFD700', fontSize: 'var(--fs-lg)' }}>✨ LEVEL UP!</div>
+      <div style={{ color: '#aaffaa', fontSize: 'var(--fs-sm)', marginTop: 'var(--gap-sm)' }}>Lv.{level} 달성!</div>
       <style>{`@keyframes lvlUp{from{transform:translateX(-50%) translateY(-20px);opacity:0}to{transform:translateX(-50%) translateY(0);opacity:1}}`}</style>
     </div>
   );
@@ -185,32 +185,31 @@ export function GameOverScreen({ distance, defeatedDinosaurs, onRestart }) {
 
   return (
     <div style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.96)',
+      position: 'fixed', inset: 0, background: '#100000',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       zIndex: 200, fontFamily: '"Press Start 2P", monospace',
     }}>
       <div style={{
-        width: 560, border: '3px solid #FF4444', background: '#100000',
-        padding: 28, textAlign: 'center',
-        boxShadow: '0 0 60px rgba(255,68,68,0.35)',
+        width: '100%', maxWidth: 'min(900px, 92vw)',
+        padding: 'var(--gap-lg)', textAlign: 'center',
       }}>
-        <div style={{ fontSize: 36, marginBottom: 6 }}>💀</div>
-        <div style={{ color: '#FF4444', fontSize: 18, marginBottom: 4 }}>GAME OVER</div>
-        <div style={{ color: ranking.color, fontSize: 9, marginBottom: 20 }}>{ranking.label}</div>
+        <div style={{ fontSize: 'var(--fs-xxl)', marginBottom: 'var(--gap-sm)' }}>💀</div>
+        <div style={{ color: '#FF4444', fontSize: 'var(--fs-xl)', marginBottom: 'var(--gap-sm)' }}>GAME OVER</div>
+        <div style={{ color: ranking.color, fontSize: 'var(--fs-md)', marginBottom: 'var(--gap-lg)' }}>{ranking.label}</div>
 
-        <div style={{ background: '#0a0000', border: '2px solid #2a0000', padding: 16, marginBottom: 18 }}>
+        <div style={{ background: '#0a0000', border: 'var(--bd) solid #2a0000', padding: 'var(--gap-lg)', marginBottom: 'var(--gap-lg)' }}>
           <Row label="달린 거리" value={`${Math.floor(distance)}m`} color="#FFD700" />
           <Row label="처치한 공룡" value={`${total}마리`} color="#FF6600" />
           {total > 0 && (
-            <div style={{ borderTop: '1px solid #2a0000', marginTop: 10, paddingTop: 10 }}>
+            <div style={{ borderTop: 'var(--bd) solid #2a0000', marginTop: 'var(--gap-md)', paddingTop: 'var(--gap-md)' }}>
               {Object.entries(defeatedDinosaurs).map(([k, cnt]) =>
                 cnt > 0 ? (
                   <div key={k} style={{
                     display: 'flex', justifyContent: 'space-between',
-                    fontSize: 7, color: '#666', marginBottom: 3, padding: '0 8px',
+                    fontSize: 'var(--fs-sm)', color: '#888', marginBottom: 'var(--gap-xs)', padding: '0 var(--gap-md)',
                   }}>
                     <span>{DINOSAURS[k]?.emoji} {DINOSAURS[k]?.name}</span>
-                    <span style={{ color: '#999' }}>{cnt}마리</span>
+                    <span style={{ color: '#bbb' }}>{cnt}마리</span>
                   </div>
                 ) : null
               )}
@@ -219,8 +218,8 @@ export function GameOverScreen({ distance, defeatedDinosaurs, onRestart }) {
         </div>
 
         <button onClick={onRestart} style={{
-          background: '#3a0000', color: '#FF4444', border: '2px solid #FF4444',
-          padding: '12px 32px', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit',
+          background: '#3a0000', color: '#FF4444', border: 'var(--bd) solid #FF4444',
+          padding: 'var(--gap-md) var(--gap-lg)', fontSize: 'var(--fs-lg)', cursor: 'pointer', fontFamily: 'inherit',
         }}
           onMouseEnter={e => e.currentTarget.style.background = '#5a0000'}
           onMouseLeave={e => e.currentTarget.style.background = '#3a0000'}
@@ -234,8 +233,8 @@ export function GameOverScreen({ distance, defeatedDinosaurs, onRestart }) {
 
 function Row({ label, value, color }) {
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, padding: '6px 8px' }}>
-      <span style={{ color: '#666' }}>{label}</span>
+    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--fs-md)', padding: 'var(--gap-sm) var(--gap-md)' }}>
+      <span style={{ color: '#888' }}>{label}</span>
       <span style={{ color }}>{value}</span>
     </div>
   );

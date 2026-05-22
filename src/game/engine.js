@@ -103,15 +103,15 @@ export function getHeroHitbox(heroX, heroY) {
 
 // Spawn schedule based on distance
 export function shouldSpawnEntity(distance, lastSpawnDistance, gameSpeed) {
-  const minGap = 300 + gameSpeed * 20;
-  const randomExtra = Math.random() * 300;
+  const minGap = 140 + gameSpeed * 8;
+  const randomExtra = Math.random() * 120;
   return distance - lastSpawnDistance > minGap + randomExtra;
 }
 
 // Determine spawn type weights
 export function getSpawnType(distance) {
   const shopChance = 0.08;
-  const dinoChance = 0.35;
+  const dinoChance = 0.55;
 
   const roll = Math.random();
   if (roll < shopChance) return 'shop';

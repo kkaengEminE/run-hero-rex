@@ -34,6 +34,7 @@ export default function App() {
   const [distance, setDistance]   = useState(0);
   const [countdown, setCountdown] = useState(3);
   const [levelUp, setLevelUp]     = useState(null); // level number when leveled up
+  const [runId, setRunId]         = useState(0); // increments only on fresh game
   const cdRef = useRef(null);
 
   const up = useCallback((fn) => setPlayer(p => withStats(fn(p))), []);
@@ -42,6 +43,7 @@ export default function App() {
   const startGame = useCallback(() => {
     setPlayer(p => withStats(fresh(p)));
     setDistance(0);
+    setRunId(id => id + 1);
     setPhase(PHASE.RUNNING);
   }, []);
 
@@ -130,30 +132,32 @@ export default function App() {
   }, [phase, startGame]);
 
   const showCanvas = phase === PHASE.RUNNING || phase === PHASE.COUNTDOWN;
+  const canvasMounted = phase !== PHASE.TITLE; // keep canvas alive across battle/shop so distance persists
 
   return (
-    <div style={{ minHeight:'100vh', background:'#060606', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:12 }}>
+    <div style={{ width:'100vw', height:'100vh', background:'#060606', position:'relative', overflow:'hidden' }}>
 
-      {/* Top bar */}
-      <div style={{ fontFamily:'"Press Start 2P",monospace', fontSize:9, marginBottom:8, display:'flex', gap:18, alignItems:'center', flexWrap:'wrap', justifyContent:'center' }}>
-        <span style={{ color:'#FF4500', letterSpacing:1 }}>🏃 RUN HERO REX</span>
-        {phase !== PHASE.TITLE && <>
+      {/* Top bar (overlay) — only during run/countdown */}
+      {showCanvas && (
+        <div style={{ position:'absolute', top:'var(--gap-md)', left:0, right:0, padding:'0 var(--gap-lg)', fontFamily:'"Press Start 2P",monospace', fontSize:'var(--fs-sm)', display:'flex', gap:'var(--gap-lg)', alignItems:'center', flexWrap:'wrap', justifyContent:'center', zIndex:50, pointerEvents:'none', textShadow:'2px 2px 0 #000' }}>
+          <span style={{ color:'#FF4500', letterSpacing:2, fontSize:'var(--fs-md)' }}>🏃 RUN HERO REX</span>
           <Chip icon="📏" label={`${Math.floor(distance)}m`} color="#FFD700" />
           <Chip icon="💰" label={`${player.gold}G`} color="#FFD700" />
           <Chip icon="⭐" label={`Lv.${player.level}`} color="#88aaff" />
           <MiniBar label="HP" val={player.hp} max={player.maxHp} color={player.hp/player.maxHp>0.5?'#00ee44':player.hp/player.maxHp>0.25?'#FFD700':'#FF4444'} />
           <MiniBar label="MP" val={player.mp} max={player.maxMp} color="#4488ff" />
-        </>}
-      </div>
+        </div>
+      )}
 
       {/* Canvas area */}
-      <div style={{ position:'relative', maxWidth:'100%', overflow:'hidden', border: showCanvas ? '2px solid #333' : 'none', boxShadow: showCanvas ? '0 0 30px rgba(0,0,0,0.8)' : 'none' }}>
+      <div style={{ position:'absolute', inset:0, overflow:'hidden' }}>
         {phase === PHASE.TITLE && <TitleScreen onStart={startGame} />}
 
-        {showCanvas && (
-          <>
+        {canvasMounted && (
+          <div style={{ display: showCanvas ? 'block' : 'none', width:'100%', height:'100%' }}>
             <GameCanvas
               isRunning={phase === PHASE.RUNNING}
+              runId={runId}
               player={player}
               onCollideObstacle={onObstacle}
               onCollideDino={onDino}
@@ -162,13 +166,13 @@ export default function App() {
               onUltraGainedFrame={onUltra}
             />
             {phase === PHASE.COUNTDOWN && <CountdownOverlay count={countdown} />}
-          </>
+          </div>
         )}
       </div>
 
       {/* Hint */}
       {phase === PHASE.RUNNING && (
-        <div style={{ fontFamily:'"Press Start 2P",monospace', fontSize:6, color:'#2a2a2a', marginTop:6, display:'flex', gap:14 }}>
+        <div style={{ position:'absolute', bottom:'var(--gap-md)', left:0, right:0, fontFamily:'"Press Start 2P",monospace', fontSize:'var(--fs-xs)', color:'#ddd', display:'flex', gap:'var(--gap-lg)', justifyContent:'center', flexWrap:'wrap', padding:'0 var(--gap-md)', zIndex:50, pointerEvents:'none', textShadow:'2px 2px 0 #000' }}>
           <span>SPACE/↑: 점프(2단)</span><span>공룡=전투</span><span>상점=쇼핑</span><span>장애물=오버</span>
         </div>
       )}
@@ -183,18 +187,18 @@ export default function App() {
 }
 
 function Chip({ icon, label, color }) {
-  return <span style={{ color, fontSize:9 }}>{icon} {label}</span>;
+  return <span style={{ color, fontSize:'var(--fs-sm)' }}>{icon} {label}</span>;
 }
 
 function MiniBar({ label, val, max, color }) {
   const r = Math.max(0, Math.min(1, val/max));
   return (
-    <div style={{ display:'flex', alignItems:'center', gap:4 }}>
-      <span style={{ fontSize:7, color:'#555' }}>{label}</span>
-      <div style={{ background:'#1a1a1a', width:55, height:8, border:'1px solid #333' }}>
+    <div style={{ display:'flex', alignItems:'center', gap:'var(--gap-sm)' }}>
+      <span style={{ fontSize:'var(--fs-xs)', color:'#888' }}>{label}</span>
+      <div style={{ background:'#1a1a1a', width:'var(--bar-w-mini)', height:'var(--bar-h-sm)', border:'var(--bd) solid #444' }}>
         <div style={{ background:color, width:`${r*100}%`, height:'100%', transition:'width 0.3s' }} />
       </div>
-      <span style={{ fontSize:6, color }}>{Math.floor(val)}/{max}</span>
+      <span style={{ fontSize:'var(--fs-xs)', color }}>{Math.floor(val)}/{max}</span>
     </div>
   );
 }

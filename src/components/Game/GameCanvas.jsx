@@ -9,7 +9,7 @@ import {
 } from '../../game/sprites.js';
 
 export default function GameCanvas({
-  isRunning, player, onCollideObstacle, onCollideDino, onCollideShop,
+  isRunning, runId, player, onCollideObstacle, onCollideDino, onCollideShop,
   onDistanceUpdate, onUltraGainedFrame,
 }) {
   const canvasRef = useRef(null);
@@ -100,9 +100,8 @@ export default function GameCanvas({
     }
   };
 
-  // ─── Reset world on new run ────────────────────────────────
+  // ─── Reset world only on a brand-new game (runId change) ───
   useEffect(() => {
-    if (!isRunning) return;
     const w = worldRef.current;
     w.heroY = GAME_CONFIG.GROUND_Y - GAME_CONFIG.HERO_HEIGHT;
     w.heroVY = 0;
@@ -114,6 +113,23 @@ export default function GameCanvas({
     w.animFrame = 0;
     w.frameCount = 0;
     w.lastSpawnDistance = 0;
+  }, [runId]);
+
+  // ─── Resume after a battle/shop: hero ready pose, clear nearby entities ─
+  // Triggered any time we go from not-running to running (after the runId reset).
+  useEffect(() => {
+    if (!isRunning) return;
+    const w = worldRef.current;
+    // Reset hero physics so they land on the ground in ready pose
+    w.heroY = GAME_CONFIG.GROUND_Y - GAME_CONFIG.HERO_HEIGHT;
+    w.heroVY = 0;
+    w.jumpCount = 0;
+    // Drop ahead-of-camera entities so the hero doesn't immediately collide.
+    // Anything within ~one screen ahead is cleared; far-ahead spawns survive.
+    const safeAheadX = w.cameraX + GAME_CONFIG.CANVAS_WIDTH + 80;
+    w.entities = w.entities.filter(e => e.x > safeAheadX);
+    // Re-arm spawn cadence so the next entity isn't generated instantly
+    w.lastSpawnDistance = w.distance;
   }, [isRunning]);
 
   // ─── Draw helpers ─────────────────────────────────────────
@@ -289,14 +305,22 @@ export default function GameCanvas({
     const hbox = getHeroHitbox(HERO_X + w.cameraX, w.heroY);
     for (const ent of [...w.entities]) {
       if (!checkCollision(hbox, ent)) continue;
-      if (ent.type === 'obstacle') { cb.onCollideObstacle(); return; }
+      if (ent.type === 'obstacle') {
+        cb.onCollideObstacle();
+        rafRef.current = requestAnimationFrame(loop);
+        return;
+      }
       if (ent.type === 'dinosaur') {
         w.entities = w.entities.filter(e => e.id !== ent.id);
-        cb.onCollideDino(ent); return;
+        cb.onCollideDino(ent);
+        rafRef.current = requestAnimationFrame(loop);
+        return;
       }
       if (ent.type === 'shop') {
         w.entities = w.entities.filter(e => e.id !== ent.id);
-        cb.onCollideShop(); return;
+        cb.onCollideShop();
+        rafRef.current = requestAnimationFrame(loop);
+        return;
       }
     }
 
@@ -322,7 +346,7 @@ export default function GameCanvas({
       ref={canvasRef}
       width={GAME_CONFIG.CANVAS_WIDTH}
       height={GAME_CONFIG.CANVAS_HEIGHT}
-      style={{ display: 'block', imageRendering: 'pixelated', cursor: 'pointer', maxWidth: '100%' }}
+      style={{ display: 'block', imageRendering: 'pixelated', cursor: 'pointer', width: '100%', height: '100%', objectFit: 'fill' }}
     />
   );
 }

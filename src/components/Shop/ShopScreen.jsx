@@ -65,49 +65,47 @@ export default function ShopScreen({ player, onPurchase, onLeave }) {
   return (
     <div style={{
       position: 'fixed', inset: 0,
-      background: 'rgba(0,0,0,0.88)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: '#1a0d00',
+      display: 'flex', alignItems: 'stretch', justifyContent: 'stretch',
       zIndex: 100, fontFamily: '"Press Start 2P", monospace',
     }}>
       <div style={{
-        width: 640, maxWidth: '100vw', maxHeight: '90vh',
+        width: '100%', height: '100%',
         background: '#1a0d00',
-        border: '3px solid #DAA520',
-        boxShadow: '0 0 50px rgba(218,165,32,0.4)',
         display: 'flex', flexDirection: 'column',
         overflow: 'hidden',
       }}>
         {/* Shop header */}
         <div style={{
           background: 'linear-gradient(135deg, #3d1a00, #5a2800)',
-          padding: '12px 16px',
-          borderBottom: '2px solid #DAA520',
+          padding: 'var(--gap-md) var(--gap-lg)',
+          borderBottom: 'var(--bd) solid #DAA520',
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         }}>
           <div>
-            <div style={{ color: '#FFD700', fontSize: 14 }}>🏪 아이템 상점</div>
-            <div style={{ color: '#aaa', fontSize: 8, marginTop: 4 }}>{message}</div>
+            <div style={{ color: '#FFD700', fontSize: 'var(--fs-xl)' }}>🏪 아이템 상점</div>
+            <div style={{ color: '#aaa', fontSize: 'var(--fs-sm)', marginTop: 'var(--gap-xs)' }}>{message}</div>
           </div>
           <div style={{ textAlign: 'right' }}>
-            <div style={{ color: '#FFD700', fontSize: 12 }}>💰 {player.gold}G</div>
-            <div style={{ color: totalWeight > weightLimit ? '#FF4444' : '#aaa', fontSize: 7, marginTop: 2 }}>
+            <div style={{ color: '#FFD700', fontSize: 'var(--fs-lg)' }}>💰 {player.gold}G</div>
+            <div style={{ color: totalWeight > weightLimit ? '#FF4444' : '#aaa', fontSize: 'var(--fs-xs)', marginTop: 'var(--gap-xs)' }}>
               ⚖️ {totalWeight}/{weightLimit}
             </div>
           </div>
         </div>
 
         {/* Tabs */}
-        <div style={{ display: 'flex', borderBottom: '2px solid #333' }}>
+        <div style={{ display: 'flex', borderBottom: 'var(--bd) solid #333' }}>
           {tabs.map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               style={{
-                flex: 1, padding: '8px 4px',
+                flex: 1, padding: 'var(--gap-md) var(--gap-sm)',
                 background: activeTab === tab.id ? '#3d1a00' : '#150a00',
                 color: activeTab === tab.id ? '#FFD700' : '#888',
-                border: 'none', borderBottom: activeTab === tab.id ? '2px solid #FFD700' : '2px solid transparent',
-                fontSize: 7, cursor: 'pointer', fontFamily: 'inherit',
+                border: 'none', borderBottom: activeTab === tab.id ? 'var(--bd) solid #FFD700' : 'var(--bd) solid transparent',
+                fontSize: 'var(--fs-sm)', cursor: 'pointer', fontFamily: 'inherit',
               }}
             >
               {tab.label}
@@ -116,9 +114,9 @@ export default function ShopScreen({ player, onPurchase, onLeave }) {
         </div>
 
         {/* Content */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: 12 }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: 'var(--gap-md) var(--gap-lg)' }}>
           {activeTab === TAB_ITEMS && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(clamp(180px, 22vw, 360px), 1fr))', gap: 'var(--gap-md)' }}>
               {SHOP_ITEMS.map(item => (
                 <ItemCard
                   key={item.id}
@@ -131,7 +129,7 @@ export default function ShopScreen({ player, onPurchase, onLeave }) {
           )}
 
           {[TAB_HELMET, TAB_ARMOR, TAB_WEAPON].includes(activeTab) && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--gap-md)', maxWidth: 1100, margin: '0 auto' }}>
               {equipList(activeTab).filter(e => e.id !== 'none').map(equip => (
                 <EquipCard
                   key={equip.id}
@@ -149,20 +147,20 @@ export default function ShopScreen({ player, onPurchase, onLeave }) {
 
         {/* Footer */}
         <div style={{
-          padding: '10px 16px',
-          borderTop: '2px solid #333',
+          padding: 'var(--gap-md) var(--gap-lg)',
+          borderTop: 'var(--bd) solid #333',
           background: '#100800',
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         }}>
-          <div style={{ fontSize: 7, color: '#666' }}>
+          <div style={{ fontSize: 'var(--fs-sm)', color: '#888' }}>
             LV.{player.level} | HP {player.hp}/{player.maxHp}
           </div>
           <button
             onClick={onLeave}
             style={{
               background: '#3d1a00', color: '#FFD700',
-              border: '2px solid #DAA520',
-              padding: '8px 20px', fontSize: 9,
+              border: 'var(--bd) solid #DAA520',
+              padding: 'var(--gap-md) var(--gap-lg)', fontSize: 'var(--fs-md)',
               cursor: 'pointer', fontFamily: 'inherit',
             }}
             onMouseEnter={e => e.target.style.background = '#5a2800'}
@@ -180,21 +178,21 @@ function ItemCard({ item, canAfford, onBuy }) {
   return (
     <div style={{
       background: '#200f00',
-      border: `2px solid ${canAfford ? '#5a3a00' : '#333'}`,
-      padding: 10,
+      border: `var(--bd) solid ${canAfford ? '#5a3a00' : '#333'}`,
+      padding: 'var(--gap-md)',
       opacity: canAfford ? 1 : 0.6,
     }}>
-      <div style={{ fontSize: 20, marginBottom: 6 }}>{item.sprite}</div>
-      <div style={{ color: '#FFD700', fontSize: 8, marginBottom: 3 }}>{item.name}</div>
-      <div style={{ color: '#aaa', fontSize: 7, marginBottom: 6, lineHeight: 1.5 }}>{item.desc}</div>
+      <div style={{ fontSize: 'var(--fs-xl)', marginBottom: 'var(--gap-sm)' }}>{item.sprite}</div>
+      <div style={{ color: '#FFD700', fontSize: 'var(--fs-md)', marginBottom: 'var(--gap-xs)' }}>{item.name}</div>
+      <div style={{ color: '#aaa', fontSize: 'var(--fs-xs)', marginBottom: 'var(--gap-md)', lineHeight: 1.5 }}>{item.desc}</div>
       <button
         onClick={canAfford ? onBuy : undefined}
         disabled={!canAfford}
         style={{
           width: '100%', background: canAfford ? '#3d1a00' : '#111',
           color: canAfford ? '#FFD700' : '#444',
-          border: `1px solid ${canAfford ? '#DAA520' : '#333'}`,
-          padding: '5px', fontSize: 8, cursor: canAfford ? 'pointer' : 'default',
+          border: `var(--bd) solid ${canAfford ? '#DAA520' : '#333'}`,
+          padding: 'var(--gap-sm)', fontSize: 'var(--fs-sm)', cursor: canAfford ? 'pointer' : 'default',
           fontFamily: '"Press Start 2P", monospace',
         }}
       >
@@ -209,17 +207,17 @@ function EquipCard({ equip, isEquipped, canAfford, weightLimit, currentWeight, o
   return (
     <div style={{
       background: '#200f00',
-      border: `2px solid ${isEquipped ? '#FFD700' : canAfford ? '#5a3a00' : '#333'}`,
-      padding: 10,
-      display: 'flex', alignItems: 'center', gap: 12,
+      border: `var(--bd) solid ${isEquipped ? '#FFD700' : canAfford ? '#5a3a00' : '#333'}`,
+      padding: 'var(--gap-md)',
+      display: 'flex', alignItems: 'center', gap: 'var(--gap-md)',
       opacity: canAfford ? 1 : 0.6,
     }}>
-      <div style={{ fontSize: 24 }}>{equip.sprite}</div>
+      <div style={{ fontSize: 'var(--fs-xl)' }}>{equip.sprite}</div>
       <div style={{ flex: 1 }}>
-        <div style={{ color: isEquipped ? '#FFD700' : '#ccc', fontSize: 9, marginBottom: 3 }}>
+        <div style={{ color: isEquipped ? '#FFD700' : '#ccc', fontSize: 'var(--fs-md)', marginBottom: 'var(--gap-xs)' }}>
           {equip.name} {isEquipped && '✓'}
         </div>
-        <div style={{ fontSize: 7, color: '#aaa', display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+        <div style={{ fontSize: 'var(--fs-sm)', color: '#aaa', display: 'flex', gap: 'var(--gap-md)', flexWrap: 'wrap' }}>
           {equip.defense && <span>🛡️+{equip.defense}</span>}
           {equip.attack && <span>⚔️+{equip.attack}</span>}
           {equip.magic && <span>✨+{equip.magic}</span>}
@@ -233,9 +231,9 @@ function EquipCard({ equip, isEquipped, canAfford, weightLimit, currentWeight, o
         style={{
           background: isEquipped ? '#1a3a10' : canAfford ? '#3d1a00' : '#111',
           color: isEquipped ? '#00ff44' : canAfford ? '#FFD700' : '#444',
-          border: `1px solid ${isEquipped ? '#00ff44' : canAfford ? '#DAA520' : '#333'}`,
-          padding: '6px 10px', fontSize: 7, cursor: isEquipped || !canAfford ? 'default' : 'pointer',
-          fontFamily: '"Press Start 2P", monospace', minWidth: 70,
+          border: `var(--bd) solid ${isEquipped ? '#00ff44' : canAfford ? '#DAA520' : '#333'}`,
+          padding: 'var(--gap-sm) var(--gap-md)', fontSize: 'var(--fs-sm)', cursor: isEquipped || !canAfford ? 'default' : 'pointer',
+          fontFamily: '"Press Start 2P", monospace', minWidth: 'clamp(80px, 10vw, 160px)',
         }}
       >
         {isEquipped ? '장착중' : `💰${equip.price}G`}

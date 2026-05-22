@@ -1,2 +1,27 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { background: #0a0a0a; }
+body { background: #0a0a0a; overflow: hidden; }
+
+:root {
+  /* Font scale — viewport-relative with min/max clamps so it works from mobile to 4K */
+  --fs-xxs: clamp(8px,  0.95vmin, 16px);
+  --fs-xs:  clamp(9px,  1.15vmin, 19px);
+  --fs-sm:  clamp(10px, 1.35vmin, 22px);
+  --fs-md:  clamp(12px, 1.6vmin,  26px);
+  --fs-lg:  clamp(15px, 2.1vmin,  34px);
+  --fs-xl:  clamp(20px, 3vmin,    50px);
+  --fs-xxl: clamp(28px, 4.6vmin,  76px);
+
+  /* Spacing */
+  --gap-xs: clamp(2px,  0.4vmin,  8px);
+  --gap-sm: clamp(4px,  0.8vmin, 14px);
+  --gap-md: clamp(8px,  1.4vmin, 22px);
+  --gap-lg: clamp(14px, 2.2vmin, 36px);
+
+  /* Bars / chips */
+  --bar-h-sm: clamp(10px, 1.5vmin, 24px);
+  --bar-h-md: clamp(14px, 2.1vmin, 32px);
+  --bar-w-mini: clamp(70px, 10vmin, 180px);
+
+  /* Borders / radii */
+  --bd: clamp(1px, 0.2vmin, 3px);
+}
