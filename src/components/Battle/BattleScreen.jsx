@@ -49,7 +49,7 @@ function FightCanvas({ equipment, dinoKey, pAnim, dAnim, shakePlayer, shakeDino 
 
   return (
     <canvas ref={ref} width={600} height={220}
-      style={{ display: 'block', imageRendering: 'pixelated', width: '100%' }} />
+      style={{ display: 'block', imageRendering: 'pixelated', width: '100%', height: '100%', objectFit: 'fill' }} />
   );
 }
 
@@ -57,11 +57,11 @@ function FightCanvas({ equipment, dinoKey, pAnim, dAnim, shakePlayer, shakeDino 
 function Bar({ label, val, max, color }) {
   const r = Math.max(0, Math.min(1, val / max));
   return (
-    <div style={{ marginBottom: 7 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 7, color: '#aaa', marginBottom: 2 }}>
+    <div style={{ marginBottom: 'var(--gap-sm)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--fs-xs)', color: '#aaa', marginBottom: 'var(--gap-xs)' }}>
         <span>{label}</span><span>{Math.floor(val)}/{max}</span>
       </div>
-      <div style={{ background: '#1a1a1a', height: 10, border: '1px solid #333' }}>
+      <div style={{ background: '#1a1a1a', height: 'var(--bar-h-sm)', border: 'var(--bd) solid #333' }}>
         <div style={{ background: color, height: '100%', width: `${r * 100}%`, transition: 'width 0.25s' }} />
       </div>
     </div>
@@ -71,12 +71,12 @@ function Bar({ label, val, max, color }) {
 /* ── floating damage number ── */
 function FloatNum({ nums }) {
   return (
-    <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: 220, pointerEvents: 'none', overflow: 'hidden' }}>
+    <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden' }}>
       {nums.map(n => (
         <div key={n.id} style={{
-          position: 'absolute', left: n.x, top: n.y,
+          position: 'absolute', left: `${n.x}%`, top: `${n.y}%`,
           color: n.color, fontFamily: '"Press Start 2P", monospace',
-          fontSize: n.big ? 16 : 12,
+          fontSize: n.big ? 'var(--fs-xl)' : 'var(--fs-lg)',
           textShadow: '1px 1px 0 #000',
           animation: 'floatUp 1s ease-out forwards',
           pointerEvents: 'none',
@@ -133,21 +133,24 @@ export default function BattleScreen({ player, enemy, onBattleEnd }) {
   }, []);
 
   /* ── enemy turn ── */
-  const doEnemyTurn = useCallback((state) => {
+  const doEnemyTurn = useCallback(() => {
     setTimeout(() => {
       setBs(prev => {
-        let s = { ...prev, ...state };
+        // Battle already ended — bail out, no enemy action.
+        if (prev.result || prev.ehp <= 0 || prev.php <= 0) return prev;
+
+        let s = { ...prev };
 
         // Poison tick
         if (s.ePoisoned) {
           const dmg = s.ePoisoned.damage;
           s.ehp = Math.max(0, s.ehp - dmg);
           s.log = addLog(`☠️ 독! ${dmg} 대미지`, s.log);
-          spawnFloat(`-${dmg}`, 420, 60, '#00cc00');
+          spawnFloat(`-${dmg}`, 70, 27, '#00cc00');
           s.ePoisoned = { ...s.ePoisoned, duration: s.ePoisoned.duration - 1 };
           if (s.ePoisoned.duration <= 0) s.ePoisoned = null;
           if (s.ehp <= 0) {
-            return { ...s, result: 'won', log: addLog('🏆 승리!', s.log) };
+            return { ...s, turn: 'done', result: 'won', log: addLog('🏆 승리!', s.log) };
           }
         }
 
@@ -162,19 +165,21 @@ export default function BattleScreen({ player, enemy, onBattleEnd }) {
           : `👹 ${atkResult.attackName}! ${atkResult.damage} 대미지!`;
 
         if (atkResult.damage > 0) {
-          spawnFloat(`-${atkResult.damage}`, 80, 90, s.defending ? '#FFD700' : '#FF4444', !s.defending);
+          spawnFloat(`-${atkResult.damage}`, 13, 41, s.defending ? '#FFD700' : '#FF4444', !s.defending);
         }
 
-        const won = checkBattleEnd(newPhp, s.ehp);
+        const lost = newPhp <= 0;
+        let nextLog = addLog(logMsg, s.log);
+        if (lost) nextLog = addLog('💀 패배...', nextLog);
         return {
           ...s,
           php: newPhp,
           shakeP: atkResult.damage > 0,
           defending: false,
-          turn: 'player',
-          phase: won === 'lose' ? 'select' : 'select',
-          result: won === 'lose' ? 'lost' : null,
-          log: addLog(logMsg, s.log),
+          turn: lost ? 'done' : 'player',
+          phase: 'select',
+          result: lost ? 'lost' : null,
+          log: nextLog,
         };
       });
       setTimeout(() => setBs(p => ({ ...p, shakeP: false })), 300);
@@ -186,17 +191,18 @@ export default function BattleScreen({ player, enemy, onBattleEnd }) {
     setBs(prev => {
       if (prev.turn !== 'player' || prev.result) return prev;
       const { newState, log, floatArgs } = fn(prev);
-      const won = checkBattleEnd(newState.php, newState.ehp);
+      const raw = checkBattleEnd(newState.php, newState.ehp);
+      const result = raw === 'win' ? 'won' : raw === 'lose' ? 'lost' : null;
       const finalState = {
         ...prev, ...newState,
-        turn: won ? 'done' : 'enemy',
-        result: won || null,
+        turn: result ? 'done' : 'enemy',
+        result,
         log: addLog(log, prev.log),
         phase: 'select',
       };
-      if (!won) doEnemyTurn(finalState);
-      if (won === 'won') finalState.log = addLog('🏆 승리!', finalState.log);
-      if (won === 'lost') finalState.log = addLog('💀 패배...', finalState.log);
+      if (!result) doEnemyTurn();
+      if (result === 'won') finalState.log = addLog('🏆 승리!', finalState.log);
+      if (result === 'lost') finalState.log = addLog('💀 패배...', finalState.log);
       if (floatArgs) setTimeout(() => spawnFloat(...floatArgs), 80);
       return finalState;
     });
@@ -208,7 +214,7 @@ export default function BattleScreen({ player, enemy, onBattleEnd }) {
     return {
       newState: { ehp: Math.max(0, prev.ehp - r.damage), shakeD: true },
       log: r.isCritical ? `✨ 치명타!! ${r.damage} 대미지!` : `⚔️ 일반 공격! ${r.damage} 대미지`,
-      floatArgs: [`${r.isCritical ? '💥' : ''}−${r.damage}`, 430, 50, r.isCritical ? '#FFD700' : '#ff8800', r.isCritical],
+      floatArgs: [`${r.isCritical ? '💥' : ''}−${r.damage}`, 71, 23, r.isCritical ? '#FFD700' : '#ff8800', r.isCritical],
     };
   });
 
@@ -219,7 +225,7 @@ export default function BattleScreen({ player, enemy, onBattleEnd }) {
       return {
         newState: { ehp: Math.max(0, prev.ehp - r.damage), pmp: prev.pmp - 20, shakeD: true },
         log: `✨ 마법 공격! ${r.damage} 대미지 (MP-20)`,
-        floatArgs: [`✨−${r.damage}`, 430, 50, '#88aaff', true],
+        floatArgs: [`✨−${r.damage}`, 71, 23, '#88aaff', true],
       };
     });
   };
@@ -232,7 +238,7 @@ export default function BattleScreen({ player, enemy, onBattleEnd }) {
       return {
         newState: { ehp: Math.max(0, prev.ehp - r.damage), shakeD: true },
         log: `🔥💥 필살기!! ${r.damage} 강력한 대미지!!!`,
-        floatArgs: [`🔥−${r.damage}`, 410, 40, '#FF4500', true],
+        floatArgs: [`🔥−${r.damage}`, 68, 18, '#FF4500', true],
       };
     });
   };
@@ -275,8 +281,8 @@ export default function BattleScreen({ player, enemy, onBattleEnd }) {
 
   return (
     <div style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.93)',
-      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+      position: 'fixed', inset: 0, background: '#08080f',
+      display: 'flex', flexDirection: 'column',
       zIndex: 100, fontFamily: '"Press Start 2P", monospace',
     }}>
       <style>{`
@@ -284,132 +290,96 @@ export default function BattleScreen({ player, enemy, onBattleEnd }) {
         @keyframes battleShake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-5px)} 75%{transform:translateX(5px)} }
       `}</style>
 
-      <div style={{ width: 600, maxWidth: '100vw', border: '3px solid #FFD700', background: '#08080f', boxShadow: '0 0 50px rgba(255,215,0,0.25)' }}>
+      <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', background: '#08080f' }}>
 
         {/* ── HP bars above scene ── */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', padding: '6px 10px', background: '#0d0d1f', borderBottom: '1px solid #222' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: 'var(--gap-md)', padding: 'var(--gap-md) var(--gap-lg)', background: '#0d0d1f', borderBottom: 'var(--bd) solid #222' }}>
           {/* Player */}
           <div>
-            <div style={{ fontSize: 7, color: '#aaa', marginBottom: 3 }}>용사</div>
+            <div style={{ fontSize: 'var(--fs-xs)', color: '#aaa', marginBottom: 'var(--gap-xs)' }}>용사</div>
             <HpBarMini val={bs.php} max={player.maxHp || 100} />
           </div>
           {/* VS */}
-          <div style={{ color: '#FF4500', fontSize: 10, padding: '0 12px' }}>VS</div>
+          <div style={{ color: '#FF4500', fontSize: 'var(--fs-md)', padding: '0 var(--gap-md)' }}>VS</div>
           {/* Enemy */}
           <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: 7, color: '#aaa', marginBottom: 3 }}>{dino.name}</div>
+            <div style={{ fontSize: 'var(--fs-xs)', color: '#aaa', marginBottom: 'var(--gap-xs)' }}>{dino.name}</div>
             <HpBarMini val={bs.ehp} max={dino.hp} flip />
           </div>
         </div>
 
         {/* ── Battle scene ── */}
-        <div style={{ position: 'relative' }}>
+        <div style={{ position: 'relative', width: '100%', flex: 1, minHeight: 0 }}>
           <FightCanvas equipment={player.equipment || {}} dinoKey={enemy.dinoKey} pAnim={bs.pAnim} dAnim={bs.dAnim} shakePlayer={bs.shakeP} shakeDino={bs.shakeD} />
           <FloatNum nums={bs.floats} />
         </div>
 
         {/* ── Battle log ── */}
-        <div style={{ background: '#0a0a18', borderTop: '2px solid #1a1a30', borderBottom: '2px solid #1a1a30', padding: '7px 12px', minHeight: 68, maxHeight: 68, overflow: 'hidden' }}>
+        <div style={{ background: '#0a0a18', borderTop: 'var(--bd) solid #1a1a30', borderBottom: 'var(--bd) solid #1a1a30', padding: 'var(--gap-md) var(--gap-lg)', minHeight: 'calc(var(--fs-sm) * 4.5)', maxHeight: 'calc(var(--fs-sm) * 4.5)', overflow: 'hidden' }}>
           {bs.log.slice(-3).map((m, i, arr) => (
-            <div key={i} style={{ color: i === arr.length - 1 ? '#FFD700' : '#555', fontSize: 8, lineHeight: 1.7 }}>{m}</div>
+            <div key={i} style={{ color: i === arr.length - 1 ? '#FFD700' : '#555', fontSize: 'var(--fs-sm)', lineHeight: 1.5 }}>{m}</div>
           ))}
         </div>
 
-        {/* ── Command area ── */}
+        {/* ── Command area (fixed-size 4-quadrant grid) ── */}
         {!bs.result ? (
-          <div style={{ display: 'grid', gridTemplateColumns: '55% 45%', background: '#08080f' }}>
-            {/* Left — menus */}
-            <div style={{ padding: 10, borderRight: '2px solid #1a1a1a', minHeight: 130 }}>
-              {isMyTurn && bs.phase === 'select' && (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-                  {[
-                    { label: '⚔️ 공격', sub: 'attack_sub', color: '#FF6600' },
-                    { label: '🛡️ 방어', fn: defend, color: '#4488ff' },
-                    { label: '🎒 아이템', sub: 'item_sub', color: '#00cc44' },
-                    { label: '📊 상태', sub: 'status', color: '#aaaaaa' },
-                  ].map(b => (
-                    <Btn key={b.label} color={b.color}
-                      onClick={() => b.fn ? b.fn() : setBs(p => ({ ...p, phase: b.sub }))}>
-                      {b.label}
-                    </Btn>
-                  ))}
-                </div>
-              )}
+          <div style={{
+            display: 'grid', gridTemplateColumns: '60% 40%', background: '#08080f',
+            height: 'clamp(220px, 32vh, 420px)', // FIXED — never reflows on phase change
+          }}>
+            {/* Left — fixed 2x2 command grid */}
+            <div style={{
+              padding: 'var(--gap-md) var(--gap-lg)',
+              borderRight: 'var(--bd) solid #1a1a1a',
+              display: 'flex', flexDirection: 'column', minHeight: 0,
+            }}>
+              <div style={{
+                fontSize: 'var(--fs-xs)', color: '#888',
+                marginBottom: 'var(--gap-sm)', height: 'var(--fs-md)',
+                display: 'flex', alignItems: 'center', gap: 'var(--gap-md)',
+              }}>
+                {!isMyTurn ? (
+                  <span style={{ color: '#FF4500' }}>{dino.emoji} 적의 턴...</span>
+                ) : (
+                  <span>▶ {bs.phase === 'attack_sub' ? '공격 선택'
+                       : bs.phase === 'item_sub'   ? '아이템'
+                       : bs.phase === 'status'     ? '내 상태'
+                       : '명령'}</span>
+                )}
+              </div>
 
-              {isMyTurn && bs.phase === 'attack_sub' && (
-                <SubMenu title="공격 선택" onBack={() => setBs(p => ({ ...p, phase: 'select' }))}>
-                  <Btn color="#FF6600" onClick={normalAttack}>⚔️ 일반 공격</Btn>
-                  <Btn color={bs.pmp >= 20 ? '#8888ff' : '#333'} onClick={magicAttack}>
-                    ✨ 마법 (MP {bs.pmp}/{player.maxMp || 60})
-                  </Btn>
-                  <Btn color={(player.ultraGauge || 0) > 0 ? '#FF4500' : '#333'} onClick={ultraAttack}>
-                    🔥 필살기 [{player.ultraGauge || 0}/{player.maxUltraGauge || 5}]
-                  </Btn>
-                </SubMenu>
-              )}
-
-              {isMyTurn && bs.phase === 'item_sub' && (
-                <SubMenu title="아이템" onBack={() => setBs(p => ({ ...p, phase: 'select' }))}>
-                  {items.length === 0 && <div style={{ color: '#555', fontSize: 8 }}>아이템 없음</div>}
-                  {items.map(inv => {
-                    const d = SHOP_ITEMS.find(i => i.id === inv.id);
-                    return (
-                      <Btn key={inv.id} color="#00cc44" onClick={() => useItemAct(inv.id)}>
-                        {d?.sprite} {d?.name} ×{inv.quantity}
-                      </Btn>
-                    );
-                  })}
-                </SubMenu>
-              )}
-
-              {isMyTurn && bs.phase === 'status' && (
-                <SubMenu title="내 상태" onBack={() => setBs(p => ({ ...p, phase: 'select' }))}>
-                  <div style={{ fontSize: 7, color: '#aaa', lineHeight: 2 }}>
-                    <div>⚔️ 공격력: {pStats.attack}</div>
-                    <div>🛡️ 방어력: {pStats.defense}</div>
-                    {pStats.magic > 0 && <div>✨ 마법력: {pStats.magic}</div>}
-                    <div style={{ color: pStats.isOverweight ? '#FF4444' : '#aaa' }}>
-                      ⚖️ 무게: {pStats.totalWeight}/{pStats.weightLimit}
-                      {pStats.isOverweight && ' ⚠️과부하'}
-                    </div>
-                    <div style={{ color: '#FFD700', marginTop: 4 }}>
-                      {pStats.helmetData?.name !== '없음' ? pStats.helmetData?.sprite : '🚫'} {pStats.helmetData?.name}
-                    </div>
-                    <div style={{ color: '#FFD700' }}>
-                      {pStats.armorData?.name !== '없음' ? pStats.armorData?.sprite : '🚫'} {pStats.armorData?.name}
-                    </div>
-                    <div style={{ color: '#FFD700' }}>
-                      {pStats.weaponData?.name !== '없음' ? pStats.weaponData?.sprite : '🚫'} {pStats.weaponData?.name}
-                    </div>
-                  </div>
-                </SubMenu>
-              )}
-
-              {!isMyTurn && !bs.result && (
-                <div style={{ color: '#FF4500', fontSize: 9, paddingTop: 24, textAlign: 'center' }}>
-                  {dino.emoji} 적의 턴...
-                </div>
-              )}
+              <div style={{
+                flex: 1, minHeight: 0,
+                display: 'grid', gridTemplateColumns: '1fr 1fr', gridTemplateRows: '1fr 1fr',
+                gap: 'var(--gap-sm)', opacity: isMyTurn ? 1 : 0.4,
+                pointerEvents: isMyTurn ? 'auto' : 'none',
+              }}>
+                {buildCommandCells({
+                  phase: bs.phase, bs, player, pStats, items,
+                  defend, normalAttack, magicAttack, ultraAttack, useItemAct,
+                  setPhase: (next) => setBs(p => ({ ...p, phase: next })),
+                }).map((c, i) => <Cell key={i} {...c} />)}
+              </div>
             </div>
 
             {/* Right — stats */}
-            <div style={{ padding: 10 }}>
-              <div style={{ fontSize: 7, color: '#666', marginBottom: 6 }}>── 내 상태 ──</div>
+            <div style={{ padding: 'var(--gap-md) var(--gap-lg)', display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
+              <div style={{ fontSize: 'var(--fs-xs)', color: '#666', marginBottom: 'var(--gap-sm)' }}>── 내 상태 ──</div>
               <Bar label="HP" val={bs.php} max={player.maxHp || 100}
                 color={hpR > 0.5 ? '#00ee44' : hpR > 0.25 ? '#FFD700' : '#FF4444'} />
               <Bar label="MP" val={bs.pmp} max={player.maxMp || 60} color="#4488ff" />
-              <div style={{ marginTop: 6, fontSize: 7, color: '#555' }}>
-                <div style={{ marginBottom: 3 }}>🔥 ULTRA</div>
-                <div style={{ display: 'flex', gap: 3 }}>
+              <div style={{ marginTop: 'var(--gap-md)', fontSize: 'var(--fs-xs)', color: '#888' }}>
+                <div style={{ marginBottom: 'var(--gap-xs)' }}>🔥 ULTRA</div>
+                <div style={{ display: 'flex', gap: 'var(--gap-xs)' }}>
                   {Array.from({ length: player.maxUltraGauge || 5 }, (_, i) => (
                     <div key={i} style={{
-                      width: 16, height: 10,
+                      width: 'calc(var(--bar-h-md) * 1.4)', height: 'var(--bar-h-sm)',
                       background: i < (player.ultraGauge || 0) ? '#FF4500' : '#222',
-                      border: '1px solid #444',
+                      border: 'var(--bd) solid #444',
                     }} />
                   ))}
                 </div>
-                <div style={{ marginTop: 5, fontSize: 6, color: '#444' }}>
+                <div style={{ marginTop: 'var(--gap-sm)', fontSize: 'var(--fs-xxs)', color: '#666', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {dino.description}
                 </div>
               </div>
@@ -417,12 +387,12 @@ export default function BattleScreen({ player, enemy, onBattleEnd }) {
           </div>
         ) : (
           /* Result */
-          <div style={{ padding: 28, textAlign: 'center', background: bs.result === 'won' ? '#040f04' : '#0f0404' }}>
-            <div style={{ fontSize: 22, color: bs.result === 'won' ? '#00ff44' : '#FF4444', marginBottom: 14 }}>
+          <div style={{ padding: 'var(--gap-lg)', textAlign: 'center', background: bs.result === 'won' ? '#040f04' : '#0f0404' }}>
+            <div style={{ fontSize: 'var(--fs-xxl)', color: bs.result === 'won' ? '#00ff44' : '#FF4444', marginBottom: 'var(--gap-lg)' }}>
               {bs.result === 'won' ? '🏆 승리!' : '💀 패배...'}
             </div>
             {bs.result === 'won' && (
-              <div style={{ fontSize: 9, color: '#FFD700', marginBottom: 14, lineHeight: 2 }}>
+              <div style={{ fontSize: 'var(--fs-md)', color: '#FFD700', marginBottom: 'var(--gap-lg)', lineHeight: 1.8 }}>
                 <div>EXP +{getExpFromDino(enemy.dinoKey)}</div>
                 <div>GOLD +{getGoldFromDino(enemy.dinoKey)}</div>
               </div>
@@ -430,8 +400,8 @@ export default function BattleScreen({ player, enemy, onBattleEnd }) {
             <button onClick={handleEnd} style={{
               background: bs.result === 'won' ? '#0a3a10' : '#3a0a0a',
               color: bs.result === 'won' ? '#00ff44' : '#FF4444',
-              border: `2px solid ${bs.result === 'won' ? '#00ff44' : '#FF4444'}`,
-              padding: '10px 28px', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit',
+              border: `var(--bd) solid ${bs.result === 'won' ? '#00ff44' : '#FF4444'}`,
+              padding: 'var(--gap-md) var(--gap-lg)', fontSize: 'var(--fs-lg)', cursor: 'pointer', fontFamily: 'inherit',
             }}>
               {bs.result === 'won' ? '계속 달리기 →' : '게임 오버'}
             </button>
@@ -442,42 +412,92 @@ export default function BattleScreen({ player, enemy, onBattleEnd }) {
   );
 }
 
+/* ── Build the 4 cells for the current phase ── */
+function buildCommandCells({ phase, bs, player, pStats, items, defend, normalAttack, magicAttack, ultraAttack, useItemAct, setPhase }) {
+  const back = { label: '◀ 뒤로', color: '#888', onClick: () => setPhase('select') };
+
+  if (phase === 'attack_sub') {
+    const canMagic = bs.pmp >= 20;
+    const canUltra = (player.ultraGauge || 0) > 0;
+    return [
+      { label: '⚔️\n일반 공격', color: '#FF6600', onClick: normalAttack },
+      { label: `✨\n마법\nMP ${bs.pmp}/${player.maxMp || 60}`, color: canMagic ? '#8888ff' : '#444', disabled: !canMagic, onClick: canMagic ? magicAttack : null },
+      { label: `🔥\n필살기\n[${player.ultraGauge || 0}/${player.maxUltraGauge || 5}]`, color: canUltra ? '#FF4500' : '#444', disabled: !canUltra, onClick: canUltra ? ultraAttack : null },
+      back,
+    ];
+  }
+
+  if (phase === 'item_sub') {
+    const slots = [];
+    for (let i = 0; i < 3; i++) {
+      const inv = items[i];
+      if (inv) {
+        const d = SHOP_ITEMS.find(x => x.id === inv.id);
+        slots.push({ label: `${d?.sprite || ''}\n${d?.name || ''}\n×${inv.quantity}`, color: '#00cc44', onClick: () => useItemAct(inv.id) });
+      } else {
+        slots.push({ label: '─', color: '#222', disabled: true });
+      }
+    }
+    slots.push(back);
+    return slots;
+  }
+
+  if (phase === 'status') {
+    return [
+      { label: `⚔️\n공격력\n${pStats.attack}`, color: '#FF6600', readonly: true },
+      { label: `🛡️\n방어력\n${pStats.defense}`, color: '#4488ff', readonly: true },
+      {
+        label: `⚖️\n무게\n${pStats.totalWeight}/${pStats.weightLimit}${pStats.isOverweight ? ' ⚠️' : ''}`,
+        color: pStats.isOverweight ? '#FF4444' : '#aaa', readonly: true,
+      },
+      back,
+    ];
+  }
+
+  // select
+  return [
+    { label: '⚔️\n공격', color: '#FF6600', onClick: () => setPhase('attack_sub') },
+    { label: '🛡️\n방어', color: '#4488ff', onClick: defend },
+    { label: '🎒\n아이템', color: '#00cc44', onClick: () => setPhase('item_sub') },
+    { label: '📊\n상태', color: '#aaaaaa', onClick: () => setPhase('status') },
+  ];
+}
+
+/* ── A single 2x2 grid cell — fixed size, scales font with cell size ── */
+function Cell({ label, color, onClick, disabled, readonly }) {
+  const isInteractive = !disabled && !readonly && typeof onClick === 'function';
+  return (
+    <button
+      onClick={isInteractive ? onClick : undefined}
+      disabled={!isInteractive}
+      style={{
+        background: readonly ? '#0f0f1a' : '#0d0d1f',
+        color: disabled ? '#444' : color,
+        border: `var(--bd) solid ${disabled ? '#333' : color + '66'}`,
+        fontSize: 'var(--fs-sm)',
+        fontFamily: '"Press Start 2P", monospace',
+        cursor: isInteractive ? 'pointer' : 'default',
+        whiteSpace: 'pre-line', textAlign: 'center', lineHeight: 1.5,
+        padding: 'var(--gap-sm)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        minWidth: 0, minHeight: 0, // allow grid to control size
+        transition: 'background 0.1s',
+      }}
+      onMouseEnter={e => isInteractive && (e.currentTarget.style.background = '#1a1a3a')}
+      onMouseLeave={e => isInteractive && (e.currentTarget.style.background = readonly ? '#0f0f1a' : '#0d0d1f')}
+    >
+      {label}
+    </button>
+  );
+}
+
 function HpBarMini({ val, max, flip = false }) {
   const r = Math.max(0, Math.min(1, val / max));
   const color = r > 0.5 ? '#00ee44' : r > 0.25 ? '#FFD700' : '#FF4444';
   return (
-    <div style={{ background: '#1a1a1a', height: 10, border: '1px solid #333', direction: flip ? 'rtl' : 'ltr' }}>
+    <div style={{ background: '#1a1a1a', height: 'var(--bar-h-md)', border: 'var(--bd) solid #333', direction: flip ? 'rtl' : 'ltr' }}>
       <div style={{ background: color, height: '100%', width: `${r * 100}%`, transition: 'width 0.3s' }} />
     </div>
   );
 }
 
-function Btn({ children, onClick, color = '#FFD700' }) {
-  return (
-    <button onClick={onClick} style={{
-      display: 'block', width: '100%', background: '#0d0d1f',
-      color, border: `1px solid ${color}44`,
-      padding: '7px 4px', fontSize: 8, cursor: 'pointer',
-      fontFamily: '"Press Start 2P", monospace', textAlign: 'left',
-      marginBottom: 5, transition: 'background 0.1s',
-    }}
-      onMouseEnter={e => e.currentTarget.style.background = '#1a1a3a'}
-      onMouseLeave={e => e.currentTarget.style.background = '#0d0d1f'}>
-      {children}
-    </button>
-  );
-}
-
-function SubMenu({ title, onBack, children }) {
-  return (
-    <div>
-      <div style={{ fontSize: 7, color: '#666', marginBottom: 6 }}>▶ {title}</div>
-      {children}
-      <button onClick={onBack} style={{
-        background: 'none', color: '#555', border: '1px solid #333',
-        padding: '5px 8px', fontSize: 7, cursor: 'pointer',
-        fontFamily: '"Press Start 2P", monospace', marginTop: 4,
-      }}>◀ 뒤로</button>
-    </div>
-  );
-}
